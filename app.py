@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import io
-import time
 from deep_translator import GoogleTranslator
 import openpyxl
 from openpyxl.styles import PatternFill, Font, Alignment
@@ -17,7 +16,7 @@ if 'current_page' not in st.session_state: st.session_state['current_page'] = 'D
 def change_page(page_name): st.session_state['current_page'] = page_name
 
 # ==========================================
-# 2. INJEÇÃO DE CSS (VISUAL GLOBAL)
+# 2. INJEÇÃO DE CSS
 # ==========================================
 st.markdown("""
     <style>
@@ -48,7 +47,6 @@ st.markdown("""
 # 3. MÁQUINA DE ESTADOS E ROTEAMENTO
 # ==========================================
 if not st.session_state['logged_in']:
-    # --- TELA 1: PORTA DE ENTRADA ---
     spacer_left, col_sales, col_login, spacer_right = st.columns([0.5, 2.5, 1.5, 0.5])
     with col_sales:
         st.write("<br><br><br>", unsafe_allow_html=True)
@@ -72,7 +70,6 @@ if not st.session_state['logged_in']:
             else: st.error("Preencha o e-mail e a senha.")
         st.markdown("</div></div>", unsafe_allow_html=True)
 else:
-    # --- TELA 2: DENTRO DO SISTEMA ---
     st.markdown('<div class="nav-container">', unsafe_allow_html=True)
     n1, n2, n3, n4, n5 = st.columns([1, 1.5, 1.5, 1.5, 1.5])
     with n1: st.markdown("<span style='font-size: 1.5rem; font-weight: 900; background: linear-gradient(45deg, #b026ff, #00ff41); -webkit-background-clip: text; -webkit-text-fill-color: transparent;'>⚡ SQG</span>", unsafe_allow_html=True)
@@ -104,7 +101,6 @@ else:
         with c3: st.markdown("""<div class="dash-card" style="padding: 0; overflow: hidden; border-color: rgba(255, 215, 0, 0.4);"><div style="filter: blur(5px); opacity: 0.2; height: 100%; position: absolute; width: 100%; background-image: url('https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/China_edcp_location_map.svg/500px-China_edcp_location_map.svg.png'); background-size: cover; background-position: center;"></div><div style="position: relative; z-index: 2; top: 50%; transform: translateY(30%); text-align: center; width: 100%;"><h3 style="color: #FFD700; margin-bottom: 5px;">🔒 Módulo Premium</h3><p style="font-size: 0.9em; color: #fff;">Calcule o CBM e Frete Inland.</p><button style="background: #FFD700; color: #000; border: none; padding: 10px 20px; border-radius: 5px; font-weight: 900; cursor: pointer; margin-top: 10px;">DESBLOQUEAR PLANO</button></div></div>""", unsafe_allow_html=True)
 
     elif st.session_state['current_page'] == 'Auto-Format':
-        # --- A MÁGICA DO MAPEAMENTO ACONTECE AQUI ---
         st.markdown("<h2 class='tool-header'>⚡ Auto-Format (Mapeamento Mágico)</h2>", unsafe_allow_html=True)
         
         st.markdown("<div class='glass-box'>", unsafe_allow_html=True)
@@ -118,97 +114,108 @@ else:
         sigla_destino = mapa_idiomas[idioma_destino]
         
         st.markdown("---")
+        
+        # A INTELIGÊNCIA DE LINHAS: O usuário diz onde a tabela começa
+        linha_inicio = st.number_input("📌 Em qual linha da planilha começam os nomes das colunas? (Ex: Se os dados começam na 13 e os nomes na 12, digite 12)", min_value=1, value=1)
+        
         arquivo_dados = st.file_uploader("📁 Arraste a sua Planilha Bruta aqui (Apenas XLSX)", type=["xlsx"])
         
         if arquivo_dados:
-            # 1. O Robô lê a planilha automaticamente
-            df = pd.read_excel(arquivo_dados)
-            colunas = list(df.columns)
-            
-            st.markdown("### 🤖 O Robô mapeou suas colunas. Confirme antes de gerar:")
-            
-            # 2. IA Básica para tentar adivinhar qual coluna é qual
-            def adivinhar_coluna(lista_colunas, palavras_chave):
-                for col in lista_colunas:
-                    if any(kw in str(col).lower() for kw in palavras_chave): return lista_colunas.index(col)
-                return 0
-            
-            idx_desc = adivinhar_coluna(colunas, ['desc', 'produto', 'name', 'nome', 'item'])
-            idx_qtd = adivinhar_coluna(colunas, ['qtd', 'quantidade', 'qty', 'quantity', 'vol'])
-            
-            # 3. Caixas de Confirmação para o Usuário
-            c1, c2 = st.columns(2)
-            with c1: col_desc = st.selectbox("✅ Coluna de Produto/Descrição:", colunas, index=idx_desc)
-            with c2: col_qtd = st.selectbox("✅ Coluna de Quantidade:", colunas, index=idx_qtd)
-            
-            st.write("<br>", unsafe_allow_html=True)
-            st.markdown("<div class='btn-main'>", unsafe_allow_html=True)
-            
-            # 4. A Geração do Arquivo do Zero
-            if st.button("🚀 TRADUZIR E GERAR PLANILHA CORPORATIVA"):
-                with st.spinner("O motor SpeedQuote está construindo sua cotação. Aguarde..."):
-                    tradutor = GoogleTranslator(source=sigla_origem, target=sigla_destino)
-                    
-                    # Criando um arquivo Excel do ZERO (Fim do Template)
-                    wb = openpyxl.Workbook()
-                    ws = wb.active
-                    ws.title = "SpeedQuote Format"
-                    
-                    # Construindo os cabeçalhos padrão Global
-                    headers = ["Item No.", "Image", "Product Description", "Quantity", "Target Price", "Quoted Price", "MOQ", "Notes"]
-                    ws.append(headers)
-                    
-                    # Estilizando o cabeçalho (Azul Corporativo)
-                    header_fill = PatternFill(start_color="1C86EE", end_color="1C86EE", fill_type="solid")
-                    header_font = Font(color="FFFFFF", bold=True)
-                    for cell in ws[1]:
-                        cell.fill = header_fill
-                        cell.font = header_font
-                        cell.alignment = Alignment(horizontal="center", vertical="center")
-                    
-                    ws.column_dimensions['A'].width = 10
-                    ws.column_dimensions['B'].width = 15
-                    ws.column_dimensions['C'].width = 60
-                    ws.column_dimensions['D'].width = 15
-                    ws.column_dimensions['E'].width = 15
-                    ws.column_dimensions['F'].width = 15
-                    ws.column_dimensions['G'].width = 15
-                    ws.column_dimensions['H'].width = 30
-                    
-                    # Lendo os dados brutos, traduzindo e jogando no novo arquivo
-                    barra_progresso = st.progress(0)
-                    total_itens = len(df)
-                    
-                    for index, row in df.iterrows():
-                        texto_original = str(row[col_desc]) if pd.notna(row[col_desc]) else ""
-                        quantidade = str(row[col_qtd]) if pd.notna(row[col_qtd]) else ""
-                        
-                        try:
-                            texto_traduzido = tradutor.translate(texto_original[:4500]) if texto_original else ""
-                        except:
-                            texto_traduzido = texto_original
+            try:
+                # O pandas agora ignora o "lixo" do topo (header=0 significa primeira linha, então diminuímos 1)
+                df = pd.read_excel(arquivo_dados, header=linha_inicio - 1)
+                colunas = list(df.columns)
+                
+                st.success("Tabela localizada com sucesso!")
+                st.markdown("### 🤖 Mapeamento de Colunas")
+                st.info("💡 Dica: Na descrição, você pode selecionar múltiplas colunas (ex: Cor, Tamanho, Voltagem). O robô vai juntar tudo em um texto só.")
+                
+                c1, c2 = st.columns(2)
+                with c1: 
+                    # MULTISELECT: Permite escolher várias colunas para fundir
+                    cols_desc = st.multiselect("✅ Quais colunas formam a Descrição do Produto?", colunas)
+                with c2: 
+                    # Dropdown normal para a quantidade, com a opção "Não tem"
+                    opcoes_qtd = ["Não tem na planilha"] + colunas
+                    col_qtd = st.selectbox("✅ Qual é a coluna de Quantidade?", opcoes_qtd)
+                
+                st.write("<br>", unsafe_allow_html=True)
+                st.markdown("<div class='btn-main'>", unsafe_allow_html=True)
+                
+                if st.button("🚀 TRADUZIR E GERAR PLANILHA CORPORATIVA"):
+                    if len(cols_desc) == 0:
+                        st.error("Por favor, selecione pelo menos uma coluna para a Descrição do Produto.")
+                    else:
+                        with st.spinner("O motor SpeedQuote está construindo sua cotação e fundindo as colunas. Aguarde..."):
+                            tradutor = GoogleTranslator(source=sigla_origem, target=sigla_destino)
                             
-                        # Inserindo a linha formatada
-                        ws.append([index + 1, "", texto_traduzido, quantidade, "", "", "", ""])
-                        
-                        # Quebra de linha na descrição para ficar bonito
-                        ws.cell(row=index+2, column=3).alignment = Alignment(wrap_text=True, vertical="center")
-                        ws.row_dimensions[index+2].height = 40
-                        
-                        barra_progresso.progress((index + 1) / total_itens)
-                    
-                    # Salvando na memória e preparando o Download
-                    output = io.BytesIO()
-                    wb.save(output)
-                    output.seek(0)
-                    
-                    st.success("🎉 Arquivo Corporativo gerado com sucesso!")
-                    st.download_button(
-                        label="📥 BAIXAR PLANILHA PADRONIZADA",
-                        data=output,
-                        file_name=f"Cotação_Formatada_{sigla_destino}.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        use_container_width=True
-                    )
-            st.markdown("</div>", unsafe_allow_html=True)
+                            wb = openpyxl.Workbook()
+                            ws = wb.active
+                            ws.title = "SpeedQuote Format"
+                            
+                            headers = ["Item No.", "Image", "Product Description", "Quantity", "Target Price", "Quoted Price", "MOQ", "Notes"]
+                            ws.append(headers)
+                            
+                            header_fill = PatternFill(start_color="1C86EE", end_color="1C86EE", fill_type="solid")
+                            header_font = Font(color="FFFFFF", bold=True)
+                            for cell in ws[1]:
+                                cell.fill = header_fill
+                                cell.font = header_font
+                                cell.alignment = Alignment(horizontal="center", vertical="center")
+                            
+                            ws.column_dimensions['A'].width = 10
+                            ws.column_dimensions['B'].width = 15
+                            ws.column_dimensions['C'].width = 60
+                            ws.column_dimensions['D'].width = 15
+                            ws.column_dimensions['E'].width = 15
+                            ws.column_dimensions['F'].width = 15
+                            ws.column_dimensions['G'].width = 15
+                            ws.column_dimensions['H'].width = 30
+                            
+                            barra_progresso = st.progress(0)
+                            total_itens = len(df)
+                            
+                            for index, row in df.iterrows():
+                                # FUSÃO DE COLUNAS: Junta todos os pedaços da descrição
+                                partes_desc = []
+                                for col in cols_desc:
+                                    valor = str(row[col]) if pd.notna(row[col]) else ""
+                                    # Limpa valores nulos do pandas
+                                    if valor and valor.strip().lower() != "nan":
+                                        partes_desc.append(valor)
+                                
+                                # Junta as partes com um hífen ou espaço
+                                texto_original = " - ".join(partes_desc)
+                                
+                                # Puxa a quantidade
+                                quantidade = ""
+                                if col_qtd != "Não tem na planilha":
+                                    quantidade = str(row[col_qtd]) if pd.notna(row[col_qtd]) else ""
+                                    if quantidade.strip().lower() == "nan": quantidade = ""
+                                
+                                try:
+                                    texto_traduzido = tradutor.translate(texto_original[:4500]) if texto_original else ""
+                                except:
+                                    texto_traduzido = texto_original
+                                    
+                                ws.append([index + 1, "", texto_traduzido, quantidade, "", "", "", ""])
+                                ws.cell(row=index+2, column=3).alignment = Alignment(wrap_text=True, vertical="center")
+                                ws.row_dimensions[index+2].height = 40
+                                
+                                barra_progresso.progress((index + 1) / total_itens)
+                            
+                            output = io.BytesIO()
+                            wb.save(output)
+                            output.seek(0)
+                            
+                            st.success("🎉 Arquivo Corporativo gerado com sucesso!")
+                            st.download_button(
+                                label="📥 BAIXAR PLANILHA PADRONIZADA",
+                                data=output,
+                                file_name=f"Cotação_Formatada_{sigla_destino}.xlsx",
+                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                use_container_width=True
+                            )
+            except Exception as e:
+                st.error(f"Ocorreu um erro ao ler a planilha. Verifique a linha indicada. Detalhe técnico: {e}")
         st.markdown("</div>", unsafe_allow_html=True)

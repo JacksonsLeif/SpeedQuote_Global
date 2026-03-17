@@ -1,5 +1,4 @@
 import streamlit as st
-import pandas as pd
 import time
 
 # ==========================================
@@ -10,6 +9,7 @@ st.set_page_config(page_title="SpeedQuote Global", page_icon="⚡", layout="wide
 if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
 if 'current_page' not in st.session_state: st.session_state['current_page'] = 'Dashboard'
 if 'dados_fornecedores' not in st.session_state: st.session_state['dados_fornecedores'] = None
+if 'fornecedor_vencedor' not in st.session_state: st.session_state['fornecedor_vencedor'] = None
 
 def change_page(page_name): st.session_state['current_page'] = page_name
 
@@ -19,9 +19,8 @@ def change_page(page_name): st.session_state['current_page'] = page_name
 st.markdown("""
     <style>
     .stApp { background-color: #050505; color: #ffffff; }
-    .neon-orb-purple { position: absolute; width: 500px; height: 500px; background: #8A2BE2; border-radius: 50%; filter: blur(180px); top: 0%; right: 10%; z-index: 0; opacity: 0.4; animation: pulse 8s infinite alternate; }
+    .neon-orb-purple { position: absolute; width: 500px; height: 500px; background: #8A2BE2; border-radius: 50%; filter: blur(180px); top: 0%; right: 10%; z-index: 0; opacity: 0.4; }
     .neon-orb-green { position: absolute; width: 400px; height: 400px; background: #00ff41; border-radius: 50%; filter: blur(150px); bottom: -10%; left: 10%; z-index: 0; opacity: 0.2; }
-    @keyframes pulse { 0% { transform: scale(1); opacity: 0.3; } 100% { transform: scale(1.1); opacity: 0.5; } }
     
     .glass-box { background: rgba(20, 20, 20, 0.4); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 20px; padding: 40px; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6); z-index: 1; position: relative; }
     .btn-main>button { width: 100% !important; background-color: #00ff41 !important; color: #050505 !important; font-weight: 900 !important; font-size: 1.1rem !important; border: none !important; border-radius: 10px !important; padding: 12px !important; transition: all 0.3s ease !important; }
@@ -32,8 +31,7 @@ st.markdown("""
     .nav-btn>button:hover { color: #00ff41 !important; transform: translateY(-2px); }
     
     /* CSS DOS CARDS DA ARENA */
-    .supplier-card { background: rgba(20, 20, 20, 0.8); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 15px; padding: 20px; text-align: center; transition: 0.3s; position: relative; }
-    .supplier-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+    .supplier-card { background: rgba(20, 20, 20, 0.8); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 15px; padding: 20px; text-align: center; position: relative; margin-bottom: 20px; }
     .price-tag { font-size: 2.5rem; font-weight: 900; margin: 15px 0; }
     .price-green { color: #00ff41; text-shadow: 0 0 15px rgba(0, 255, 65, 0.4); }
     .price-red { color: #ff3333; text-shadow: 0 0 15px rgba(255, 51, 51, 0.4); }
@@ -77,12 +75,10 @@ else:
         if st.button("⚡ Ferramenta Free"): change_page('Auto-Format')
     with n4: 
         if st.button("⚔️ Arena Sourcing"): change_page('Arena')
-    with n5: st.button("📦 Logística 🔒", disabled=True)
+    with n5: 
+        if st.button("📦 Logística"): change_page('Logistica')
     st.markdown("</div></div>", unsafe_allow_html=True)
     
-    # -----------------------------------------------------
-    # ABA: DASHBOARD
-    # -----------------------------------------------------
     if st.session_state['current_page'] == 'Dashboard':
         st.markdown("<h2>Bem-vindo de volta, Importador.</h2><br>", unsafe_allow_html=True)
         c1, c2, c3 = st.columns(3)
@@ -95,70 +91,96 @@ else:
         with c3: st.markdown("""<div class="glass-box" style="padding: 20px; border-color: #FFD700;"><h3 style="color:#FFD700;">Plano Enterprise</h3><p>Acesso total liberado.</p></div>""", unsafe_allow_html=True)
 
     # -----------------------------------------------------
-    # ABA: ARENA SOURCING (A MÁGICA ACONTECE AQUI)
+    # ABA: ARENA SOURCING
     # -----------------------------------------------------
     elif st.session_state['current_page'] == 'Arena':
         st.markdown("<h2 style='color: #00ff41; border-bottom: 2px solid #8A2BE2; padding-bottom: 10px;'>⚔️ Arena de Comparação</h2>", unsafe_allow_html=True)
-        st.markdown("<p style='color: #a0a0a0;'>Analise as cotações lado a lado. O sistema destaca automaticamente a melhor opção financeira.</p>", unsafe_allow_html=True)
         
-        # Botão para simular a chegada dos dados do Smart Link
-        if st.button("📥 Puxar Dados do Banco (Simular Smart Link)"):
-            with st.spinner("Conectando com fornecedores na China..."):
-                time.sleep(1.5) # Efeito dramático de carregamento
-                # Simulação de dados que viriam do Banco de Dados
+        if st.button("📥 Puxar Dados do Banco"):
+            with st.spinner("Conectando com fornecedores..."):
+                time.sleep(1)
                 st.session_state['dados_fornecedores'] = [
-                    {"nome": "Shenzhen Tech Co.", "preco": 4.50, "moq": 500, "porto": "Shenzhen", "incoterm": "FOB", "cbm": 0.06},
-                    {"nome": "Yiwu Plastics Factory", "preco": 3.90, "moq": 1000, "porto": "Ningbo", "incoterm": "EXW", "cbm": 0.08},
+                    {"nome": "Shenzhen Tech", "preco": 4.50, "moq": 500, "porto": "Shenzhen", "incoterm": "FOB", "cbm": 0.06},
+                    {"nome": "Yiwu Plastics", "preco": 3.90, "moq": 1000, "porto": "Ningbo", "incoterm": "EXW", "cbm": 0.08},
                     {"nome": "Guangzhou Premium", "preco": 5.20, "moq": 200, "porto": "Guangzhou", "incoterm": "FOB", "cbm": 0.05}
                 ]
         
         if st.session_state['dados_fornecedores']:
             dados = st.session_state['dados_fornecedores']
-            
-            # INTELIGÊNCIA: Descobrindo o mais barato e o mais caro
             precos = [f["preco"] for f in dados]
-            preco_min = min(precos)
-            preco_max = max(precos)
+            preco_min, preco_max = min(precos), max(precos)
             
-            # Desenhando os Cards na tela
             st.write("<br>", unsafe_allow_html=True)
             cols = st.columns(3)
             
             for idx, fornecedor in enumerate(dados):
                 with cols[idx]:
-                    # Lógica do Farol de Cores
                     if fornecedor["preco"] == preco_min:
-                        cor_preco = "price-green"
-                        borda = "border: 2px solid #00ff41;"
-                        badge = "<div class='badge-win'>🏆 MELHOR PREÇO</div>"
+                        cor_preco, borda, badge = "price-green", "border: 2px solid #00ff41;", "<div class='badge-win'>🏆 MELHOR PREÇO</div>"
                     elif fornecedor["preco"] == preco_max:
-                        cor_preco = "price-red"
-                        borda = "border: 1px solid #ff3333;"
-                        badge = ""
+                        cor_preco, borda, badge = "price-red", "border: 1px solid #ff3333;", ""
                     else:
-                        cor_preco = "price-neutral"
-                        borda = "border: 1px solid rgba(255,255,255,0.1);"
-                        badge = ""
+                        cor_preco, borda, badge = "price-neutral", "border: 1px solid rgba(255,255,255,0.1);", ""
                     
-                    # Desenhando o Card em HTML
+                    # HTML simplificado para evitar cortes no Streamlit
                     st.markdown(f"""
                     <div class="supplier-card" style="{borda}">
                         {badge}
-                        <h4 style="color: #8A2BE2; margin-bottom: 5px;">{fornecedor['nome']}</h4>
+                        <h4 style="color: #8A2BE2;">{fornecedor['nome']}</h4>
                         <div class="price-tag {cor_preco}">US$ {fornecedor['preco']:.2f}</div>
-                        <div class="detail-row"><span>📦 MOQ:</span> <strong>{fornecedor['moq']} pcs</strong></div>
-                        <div class="detail-row"><span>🚢 Porto:</span> <strong>{fornecedor['porto']}</strong></div>
-                        <div class="detail-row"><span>📄 Incoterm:</span> <strong>{fornecedor['incoterm']}</strong></div>
-                        <div class="detail-row"><span>📏 Vol/Caixa:</span> <strong>{fornecedor['cbm']} CBM</strong></div>
+                        <div class="detail-row"><span>MOQ:</span> <strong>{fornecedor['moq']} pcs</strong></div>
+                        <div class="detail-row"><span>Vol/Caixa:</span> <strong>{fornecedor['cbm']} CBM</strong></div>
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    st.write("<br>", unsafe_allow_html=True)
                     st.markdown("<div class='btn-main'>", unsafe_allow_html=True)
                     if st.button(f"✅ ESCOLHER {fornecedor['nome'].split()[0].upper()}", key=f"btn_{idx}"):
-                        st.success(f"Você selecionou {fornecedor['nome']}! Na próxima fase, isso abrirá o HUB Logístico de Contêineres.")
+                        st.session_state['fornecedor_vencedor'] = fornecedor
+                        change_page('Logistica')
+                        st.rerun()
                     st.markdown("</div>", unsafe_allow_html=True)
 
-    elif st.session_state['current_page'] == 'Auto-Format':
-        st.markdown("<h2>⚡ Ferramenta Free (Gerador de Excel)</h2>", unsafe_allow_html=True)
-        st.info("Aqui ficará a versão gratuita (o código antigo de upload de planilha). O cliente testa aqui e assina o sistema para ter acesso à Arena Sourcing.")
+    # -----------------------------------------------------
+    # ABA: HUB LOGÍSTICO (SIMULADOR DE CONTÊINER)
+    # -----------------------------------------------------
+    elif st.session_state['current_page'] == 'Logistica':
+        st.markdown("<h2 style='color: #FFD700; border-bottom: 2px solid #8A2BE2; padding-bottom: 10px;'>📦 HUB Logístico</h2>", unsafe_allow_html=True)
+        
+        if not st.session_state['fornecedor_vencedor']:
+            st.warning("⚠️ Você precisa escolher um fornecedor na 'Arena Sourcing' antes de calcular a logística.")
+        else:
+            f = st.session_state['fornecedor_vencedor']
+            st.success(f"Fornecedor Selecionado: **{f['nome']}** | CBM por caixa: **{f['cbm']}**")
+            
+            st.markdown("<div class='glass-box'>", unsafe_allow_html=True)
+            qtd_desejada = st.number_input("Quantas unidades o cliente quer comprar?", min_value=1, value=f['moq'], step=100)
+            
+            cbm_total = qtd_desejada * f['cbm']
+            capacidade_20ft = 33.0 # Capacidade média de um 20'DC em CBM
+            porcentagem = (cbm_total / capacidade_20ft) * 100
+            
+            # Trava visual no 100% para a barra não quebrar o layout
+            porcentagem_visual = 100 if porcentagem > 100 else porcentagem
+            
+            st.write("<br>", unsafe_allow_html=True)
+            st.markdown(f"### 📏 Volume Total Calculado: <span style='color:#00ff41;'>{cbm_total:.2f} CBM</span>", unsafe_allow_html=True)
+            st.write(f"Capacidade de um Contêiner 20'DC: 33 CBM")
+            
+            # O DESENHO DO CONTÊINER ANIMADO (Feito com CSS)
+            cor_barra = "#00ff41" if porcentagem <= 90 else "#ff3333" # Fica vermelho se estiver lotando
+            
+            st.markdown(f"""
+            <div style="width: 100%; height: 50px; background-color: #222; border: 2px solid #555; border-radius: 5px; position: relative; overflow: hidden; margin-top: 10px; margin-bottom: 10px;">
+                <div style="width: {porcentagem_visual}%; height: 100%; background-color: {cor_barra}; box-shadow: 0 0 15px {cor_barra}; transition: width 1s ease-in-out;"></div>
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-weight: 900; font-size: 1.2rem; text-shadow: 1px 1px 2px black;">
+                    {porcentagem:.1f}% Ocupado
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            if porcentagem > 100:
+                st.error("⚠️ Atenção: A carga ultrapassou o limite de um Contêiner de 20 pés! Calcule para um 40'HQ.")
+            elif porcentagem < 50:
+                st.info("💡 Dica: O contêiner está meio vazio. Sugira ao cliente aumentar o pedido para diluir o custo do frete.")
+                
+            st.markdown("</div>", unsafe_allow_html=True)

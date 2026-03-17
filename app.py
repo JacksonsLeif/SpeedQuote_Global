@@ -65,7 +65,6 @@ if not st.session_state['logged_in']:
         st.markdown("</div></div>", unsafe_allow_html=True)
 
 else:
-    # NAV BAR
     st.markdown('<div class="nav-container">', unsafe_allow_html=True)
     n1, n2, n3, n4, n5 = st.columns([1, 1.5, 1.5, 1.5, 1.5])
     with n1: st.markdown("<span style='font-size: 1.5rem; font-weight: 900; background: linear-gradient(45deg, #b026ff, #00ff41); -webkit-background-clip: text; -webkit-text-fill-color: transparent;'>⚡ SQG</span>", unsafe_allow_html=True)
@@ -91,16 +90,12 @@ else:
             st.markdown("</div>", unsafe_allow_html=True)
         with c3: st.markdown("""<div class="glass-box" style="padding: 20px; border-color: #FFD700;"><h3 style="color:#FFD700;">Plano Enterprise</h3><p>Acesso total liberado.</p></div>""", unsafe_allow_html=True)
 
-    # -----------------------------------------------------
-    # ABA: ARENA SOURCING
-    # -----------------------------------------------------
     elif st.session_state['current_page'] == 'Arena':
         st.markdown("<h2 style='color: #00ff41; border-bottom: 2px solid #8A2BE2; padding-bottom: 10px;'>⚔️ Arena de Comparação</h2>", unsafe_allow_html=True)
         
         if st.button("📥 Puxar Dados do Banco"):
             with st.spinner("Conectando com fornecedores..."):
                 time.sleep(1)
-                # ADICIONEI A VARIÁVEL 'pcs_ctn' (Peças por Caixa) AQUI!
                 st.session_state['dados_fornecedores'] = [
                     {"nome": "Shenzhen Tech", "preco": 4.50, "moq": 500, "porto": "Shenzhen", "incoterm": "FOB", "cbm": 0.06, "pcs_ctn": 50},
                     {"nome": "Yiwu Plastics", "preco": 3.90, "moq": 1000, "porto": "Ningbo", "incoterm": "EXW", "cbm": 0.08, "pcs_ctn": 100},
@@ -142,9 +137,6 @@ else:
                         st.rerun()
                     st.markdown("</div>", unsafe_allow_html=True)
 
-    # -----------------------------------------------------
-    # ABA: HUB LOGÍSTICO (SIMULADOR DE CONTÊINER)
-    # -----------------------------------------------------
     elif st.session_state['current_page'] == 'Logistica':
         st.markdown("<h2 style='color: #FFD700; border-bottom: 2px solid #8A2BE2; padding-bottom: 10px;'>📦 HUB Logístico</h2>", unsafe_allow_html=True)
         
@@ -156,47 +148,58 @@ else:
             
             st.markdown("<div class='glass-box'>", unsafe_allow_html=True)
             
-            # Dividindo em duas colunas para ficar organizado
             col_qtd, col_tipo = st.columns(2)
             
             with col_qtd:
-                qtd_desejada = st.number_input("Quantas unidades o cliente quer comprar?", min_value=1, value=f['moq'], step=100)
+                qtd_desejada = st.number_input("Quantas unidades o cliente quer comprar?", min_value=1, value=f['moq'], step=500)
             
             with col_tipo:
-                tipo_embarque = st.selectbox("Selecione o Tipo de Embarque", ["Contêiner 20'DC (33 CBM)", "Contêiner 40'HC (76 CBM)", "LCL (Carga Fracionada)"])
+                tipo_embarque = st.selectbox("Selecione o Tipo de Embarque", ["Contêiner 20'DC (33 CBM)", "Contêiner 40'HQ (76 CBM)", "LCL (Carga Fracionada)"])
             
-            # MATEMÁTICA CORRIGIDA: Qtd -> Caixas -> CBM
-            caixas_totais = math.ceil(qtd_desejada / f['pcs_ctn']) # math.ceil arredonda sempre para cima, afinal não se envia meia caixa
+            caixas_totais = math.ceil(qtd_desejada / f['pcs_ctn']) 
             cbm_total = caixas_totais * f['cbm']
             
             st.write("<br>", unsafe_allow_html=True)
             st.markdown(f"### 📦 Caixas Totais (Master Cartons): <span style='color:#FFD700;'>{caixas_totais} caixas</span>", unsafe_allow_html=True)
             st.markdown(f"### 📏 Volume Total Calculado: <span style='color:#00ff41;'>{cbm_total:.2f} CBM</span>", unsafe_allow_html=True)
             
-            # Lógica do Contêiner
             if tipo_embarque == "LCL (Carga Fracionada)":
                 st.info("💡 Embarque LCL selecionado. O frete será cobrado por CBM avulso (Carga Consolidada).")
             else:
-                # Define a capacidade com base no dropdown
                 if "20'DC" in tipo_embarque: capacidade = 33.0
-                elif "40'HC" in tipo_embarque: capacidade = 76.0
+                elif "40'HQ" in tipo_embarque: capacidade = 76.0
                 
                 porcentagem = (cbm_total / capacidade) * 100
                 porcentagem_visual = 100 if porcentagem > 100 else porcentagem
                 
-                cor_barra = "#00ff41" if porcentagem <= 90 else "#ff3333" 
+                # A Lógica do Farol de 3 Cores
+                if porcentagem <= 90:
+                    cor_barra = "#00ff41" # Verde
+                elif porcentagem <= 100:
+                    cor_barra = "#FFD700" # Dourado/Amarelo
+                else:
+                    cor_barra = "#ff3333" # Vermelho
                 
+                # O NOVO CONTÊINER 3D COM EFEITO DE METAL CORRUGADO
                 st.markdown(f"""
-                <div style="width: 100%; height: 50px; background-color: #222; border: 2px solid #555; border-radius: 5px; position: relative; overflow: hidden; margin-top: 10px; margin-bottom: 10px;">
-                    <div style="width: {porcentagem_visual}%; height: 100%; background-color: {cor_barra}; box-shadow: 0 0 15px {cor_barra}; transition: width 1s ease-in-out;"></div>
-                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-weight: 900; font-size: 1.2rem; text-shadow: 1px 1px 2px black;">
-                        {porcentagem:.1f}% Ocupado
+                <div style="width: 100%; height: 70px; background-color: #1a1a1a; border: 4px solid #333; border-radius: 4px; position: relative; overflow: hidden; margin-top: 20px; margin-bottom: 20px; box-shadow: inset 0 0 15px rgba(0,0,0,0.8);">
+                    <div style="width: {porcentagem_visual}%; height: 100%; background-color: {cor_barra}; 
+                                background-image: repeating-linear-gradient(90deg, transparent, transparent 15px, rgba(0,0,0,0.3) 15px, rgba(0,0,0,0.3) 30px), linear-gradient(to bottom, rgba(255,255,255,0.2) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.4) 100%); 
+                                border-right: 4px solid rgba(255,255,255,0.6);
+                                box-shadow: 0 0 25px {cor_barra}; 
+                                transition: width 0.8s ease-in-out; 
+                                display: flex; align-items: center; justify-content: flex-end;">
+                    </div>
+                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-weight: 900; font-size: 1.5rem; letter-spacing: 2px; text-shadow: 2px 2px 4px #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;">
+                        {porcentagem:.1f}% OCUPADO
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
                 
                 if porcentagem > 100:
-                    st.error(f"⚠️ Atenção: A carga ({cbm_total:.2f} CBM) estourou o limite do {tipo_embarque.split(' ')[1]}!")
+                    st.error(f"⚠️ Atenção: A carga ({cbm_total:.2f} CBM) estourou o limite do {tipo_embarque.split(' ')[1]}! Mude para um tamanho maior ou fracione o pedido.")
+                elif porcentagem >= 90 and porcentagem <= 100:
+                    st.success("🎯 Perfeito! Contêiner otimizado. Você está aproveitando o frete ao máximo.")
                 elif porcentagem < 50:
                     st.warning("💡 Dica: Muito espaço vazio! O frete unitário vai ficar caro. Sugira ao cliente comprar mais itens ou mudar para LCL.")
                 

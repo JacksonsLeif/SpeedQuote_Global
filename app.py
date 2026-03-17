@@ -1,5 +1,6 @@
 import streamlit as st
 import time
+import math
 
 # ==========================================
 # 1. CONFIGURAÇÃO E MEMÓRIA
@@ -99,10 +100,11 @@ else:
         if st.button("📥 Puxar Dados do Banco"):
             with st.spinner("Conectando com fornecedores..."):
                 time.sleep(1)
+                # ADICIONEI A VARIÁVEL 'pcs_ctn' (Peças por Caixa) AQUI!
                 st.session_state['dados_fornecedores'] = [
-                    {"nome": "Shenzhen Tech", "preco": 4.50, "moq": 500, "porto": "Shenzhen", "incoterm": "FOB", "cbm": 0.06},
-                    {"nome": "Yiwu Plastics", "preco": 3.90, "moq": 1000, "porto": "Ningbo", "incoterm": "EXW", "cbm": 0.08},
-                    {"nome": "Guangzhou Premium", "preco": 5.20, "moq": 200, "porto": "Guangzhou", "incoterm": "FOB", "cbm": 0.05}
+                    {"nome": "Shenzhen Tech", "preco": 4.50, "moq": 500, "porto": "Shenzhen", "incoterm": "FOB", "cbm": 0.06, "pcs_ctn": 50},
+                    {"nome": "Yiwu Plastics", "preco": 3.90, "moq": 1000, "porto": "Ningbo", "incoterm": "EXW", "cbm": 0.08, "pcs_ctn": 100},
+                    {"nome": "Guangzhou Premium", "preco": 5.20, "moq": 200, "porto": "Guangzhou", "incoterm": "FOB", "cbm": 0.05, "pcs_ctn": 40}
                 ]
         
         if st.session_state['dados_fornecedores']:
@@ -122,13 +124,13 @@ else:
                     else:
                         cor_preco, borda, badge = "price-neutral", "border: 1px solid rgba(255,255,255,0.1);", ""
                     
-                    # HTML simplificado para evitar cortes no Streamlit
                     st.markdown(f"""
                     <div class="supplier-card" style="{borda}">
                         {badge}
                         <h4 style="color: #8A2BE2;">{fornecedor['nome']}</h4>
                         <div class="price-tag {cor_preco}">US$ {fornecedor['preco']:.2f}</div>
                         <div class="detail-row"><span>MOQ:</span> <strong>{fornecedor['moq']} pcs</strong></div>
+                        <div class="detail-row"><span>Caixa (PCS/CTN):</span> <strong>{fornecedor['pcs_ctn']} pcs</strong></div>
                         <div class="detail-row"><span>Vol/Caixa:</span> <strong>{fornecedor['cbm']} CBM</strong></div>
                     </div>
                     """, unsafe_allow_html=True)
@@ -150,37 +152,52 @@ else:
             st.warning("⚠️ Você precisa escolher um fornecedor na 'Arena Sourcing' antes de calcular a logística.")
         else:
             f = st.session_state['fornecedor_vencedor']
-            st.success(f"Fornecedor Selecionado: **{f['nome']}** | CBM por caixa: **{f['cbm']}**")
+            st.success(f"Fornecedor Selecionado: **{f['nome']}** | {f['pcs_ctn']} pcs/caixa | CBM por caixa: **{f['cbm']}**")
             
             st.markdown("<div class='glass-box'>", unsafe_allow_html=True)
-            qtd_desejada = st.number_input("Quantas unidades o cliente quer comprar?", min_value=1, value=f['moq'], step=100)
             
-            cbm_total = qtd_desejada * f['cbm']
-            capacidade_20ft = 33.0 # Capacidade média de um 20'DC em CBM
-            porcentagem = (cbm_total / capacidade_20ft) * 100
+            # Dividindo em duas colunas para ficar organizado
+            col_qtd, col_tipo = st.columns(2)
             
-            # Trava visual no 100% para a barra não quebrar o layout
-            porcentagem_visual = 100 if porcentagem > 100 else porcentagem
+            with col_qtd:
+                qtd_desejada = st.number_input("Quantas unidades o cliente quer comprar?", min_value=1, value=f['moq'], step=100)
+            
+            with col_tipo:
+                tipo_embarque = st.selectbox("Selecione o Tipo de Embarque", ["Contêiner 20'DC (33 CBM)", "Contêiner 40'HC (76 CBM)", "LCL (Carga Fracionada)"])
+            
+            # MATEMÁTICA CORRIGIDA: Qtd -> Caixas -> CBM
+            caixas_totais = math.ceil(qtd_desejada / f['pcs_ctn']) # math.ceil arredonda sempre para cima, afinal não se envia meia caixa
+            cbm_total = caixas_totais * f['cbm']
             
             st.write("<br>", unsafe_allow_html=True)
+            st.markdown(f"### 📦 Caixas Totais (Master Cartons): <span style='color:#FFD700;'>{caixas_totais} caixas</span>", unsafe_allow_html=True)
             st.markdown(f"### 📏 Volume Total Calculado: <span style='color:#00ff41;'>{cbm_total:.2f} CBM</span>", unsafe_allow_html=True)
-            st.write(f"Capacidade de um Contêiner 20'DC: 33 CBM")
             
-            # O DESENHO DO CONTÊINER ANIMADO (Feito com CSS)
-            cor_barra = "#00ff41" if porcentagem <= 90 else "#ff3333" # Fica vermelho se estiver lotando
-            
-            st.markdown(f"""
-            <div style="width: 100%; height: 50px; background-color: #222; border: 2px solid #555; border-radius: 5px; position: relative; overflow: hidden; margin-top: 10px; margin-bottom: 10px;">
-                <div style="width: {porcentagem_visual}%; height: 100%; background-color: {cor_barra}; box-shadow: 0 0 15px {cor_barra}; transition: width 1s ease-in-out;"></div>
-                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-weight: 900; font-size: 1.2rem; text-shadow: 1px 1px 2px black;">
-                    {porcentagem:.1f}% Ocupado
+            # Lógica do Contêiner
+            if tipo_embarque == "LCL (Carga Fracionada)":
+                st.info("💡 Embarque LCL selecionado. O frete será cobrado por CBM avulso (Carga Consolidada).")
+            else:
+                # Define a capacidade com base no dropdown
+                if "20'DC" in tipo_embarque: capacidade = 33.0
+                elif "40'HC" in tipo_embarque: capacidade = 76.0
+                
+                porcentagem = (cbm_total / capacidade) * 100
+                porcentagem_visual = 100 if porcentagem > 100 else porcentagem
+                
+                cor_barra = "#00ff41" if porcentagem <= 90 else "#ff3333" 
+                
+                st.markdown(f"""
+                <div style="width: 100%; height: 50px; background-color: #222; border: 2px solid #555; border-radius: 5px; position: relative; overflow: hidden; margin-top: 10px; margin-bottom: 10px;">
+                    <div style="width: {porcentagem_visual}%; height: 100%; background-color: {cor_barra}; box-shadow: 0 0 15px {cor_barra}; transition: width 1s ease-in-out;"></div>
+                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-weight: 900; font-size: 1.2rem; text-shadow: 1px 1px 2px black;">
+                        {porcentagem:.1f}% Ocupado
+                    </div>
                 </div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            if porcentagem > 100:
-                st.error("⚠️ Atenção: A carga ultrapassou o limite de um Contêiner de 20 pés! Calcule para um 40'HQ.")
-            elif porcentagem < 50:
-                st.info("💡 Dica: O contêiner está meio vazio. Sugira ao cliente aumentar o pedido para diluir o custo do frete.")
+                """, unsafe_allow_html=True)
+                
+                if porcentagem > 100:
+                    st.error(f"⚠️ Atenção: A carga ({cbm_total:.2f} CBM) estourou o limite do {tipo_embarque.split(' ')[1]}!")
+                elif porcentagem < 50:
+                    st.warning("💡 Dica: Muito espaço vazio! O frete unitário vai ficar caro. Sugira ao cliente comprar mais itens ou mudar para LCL.")
                 
             st.markdown("</div>", unsafe_allow_html=True)
